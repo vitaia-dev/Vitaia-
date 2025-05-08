@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VITAIA - Test IA Parkinson</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100 text-gray-800 font-sans">
+  <div class="min-h-screen flex flex-col justify-between">
+    <header class="p-4 bg-blue-900 text-white text-center">
+      <h1 class="text-2xl font-bold">VITAIA</h1>
+      <p class="text-sm">Votre voix peut sauver votre vie</p>
+    </header>
+
+    <main class="flex flex-col items-center justify-center flex-1 p-6">
+      <h2 class="text-xl font-semibold mb-4 text-center">Analyse IA avec votre voix</h2>
+      <p class="text-center text-gray-600 mb-6">Enregistrez votre voix et lancez l'analyse.</p>
+
+      <button id="startBtn" class="bg-blue-700 text-white px-6 py-3 rounded-full text-lg shadow-md hover:bg-blue-800 mb-4">
+        Démarrer l'enregistrement
+      </button>
+      <button id="sendBtn" class="bg-green-700 text-white px-6 py-3 rounded-full text-lg shadow-md hover:bg-green-800 mb-4" disabled>
+        Envoyer à l'IA
+      </button>
+
+      <p id="status" class="mt-6 text-center text-lg font-medium"></p>
+    </main>
+
+    <footer class="p-4 text-center text-xs text-gray-500">
+      &copy; 2025 VITAIA. Tous droits réservés.
+    </footer>
+  </div>
+
+  <script>
+    let mediaRecorder;
+    let audioChunks = [];
+    let audioBlob;
+
+    const startBtn = document.getElementById("startBtn");
+    const sendBtn = document.getElementById("sendBtn");
+    const status = document.getElementById("status");
+
+    startBtn.addEventListener("click", async () => {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorder = new MediaRecorder(stream);
+
+      mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+
+      mediaRecorder.onstop = () => {
+        audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+        sendBtn.disabled = false;
+        status.textContent = "Enregistrement terminé. Prêt à analyser.";
+      };
+
+      audioChunks = [];
+      mediaRecorder.start();
+      status.textContent = "Enregistrement en cours (5 secondes)...";
+
+      setTimeout(() => mediaRecorder.stop(), 5000);
+    });
+
+    sendBtn.addEventListener("click", async () => {
+      const formData = new FormData();
+      formData.append("fichier", audioBlob, "voix.wav");
+      status.textContent = "Analyse en cours...";
+
+      try {
+        const response = await fetch("http://localhost:5000/analyser", {
+          method: "POST",
+          body: formData
+        });
+        const result = await response.json();
+        status.textContent = result.resultat || result.erreur;
+      } catch (err) {
+        status.textContent = "Erreur lors de l'envoi à l'IA.";
+      }
+    });
+  </script>
+</body>
+</html>
